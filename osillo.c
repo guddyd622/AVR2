@@ -7,12 +7,9 @@
 #define V_REF 5.0f
 
 // 오실로스코프 Time/Div 스텝 설정 (1-2-5 스케일 방식)
-#define MAX_TIME_DIV 6
-int time_div_steps[MAX_TIME_DIV] = {1, 2, 5, 10, 20, 50};
-char* time_div_strs[MAX_TIME_DIV] = {"x1 ", "x2 ", "x5 ", "x10", "x20", "x50"};
 
-volatile int time_div_idx = 2; // 초기 상태 (x5 배율, graph_speed = 5)
-volatile int graph_speed = 5;
+volatile int time_div_idx = 1; // 초기 상태 (x5 배율, graph_speed = 5)
+volatile int graph_speed = 1;
 volatile int update_ui = 1;    // 화면 글씨 갱신 플래그
 
 int graph_col = 21; // 시간축(가로) 진행 좌표
@@ -23,46 +20,13 @@ void adc_init()
     ADCSRA = 0x87;
 }
 
-/* FND 초기화 주석 처리 유지
+/*
 void fnd_init()
 {
     DDRC = 0xff;
     DDRG = 0x0f;
 }
 */
-
-void ext_int_init()
-{
-    DDRE &= ~(0x30);
-    EIMSK = 0x30;
-    EICRB = 0x0A;
-}
-
-// INT4: Time/Div 축소 (더 빠르게 그래프를 그림 - Zoom In)
-ISR(INT4_vect)
-{
-    cli();
-    if (time_div_idx > 0) {
-        time_div_idx--;
-        graph_speed = time_div_steps[time_div_idx];
-        update_ui = 1; // 배율이 바뀌었으므로 화면 갱신 요청
-    }
-    _delay_ms(50); // 디바운싱
-    sei();
-}
-
-// INT5: Time/Div 확대 (더 느리게 그래프를 그림 - Zoom Out)
-ISR(INT5_vect)
-{
-    cli();
-    if (time_div_idx < (MAX_TIME_DIV - 1)) {
-        time_div_idx++;
-        graph_speed = time_div_steps[time_div_idx];
-        update_ui = 1;
-    }
-    _delay_ms(50);
-    sei();
-}
 
 float read_volt()
 {
@@ -102,14 +66,11 @@ int main(void)
     _delay_ms(50);
     
     adc_init();
-    ext_int_init();
     
     GLCD_Port_Init();
     GLCD_Init();
     
     axis();
-    
-    sei();
     
     int loop_count = 0;
     
@@ -120,9 +81,6 @@ int main(void)
     
     while(1)
     {
-        // 배율이 변경되었을 때만 우측 상단에 현재 Time/Div 배율을 텍스트로 표시
-       
-
         float volt = read_volt();
         
         loop_count++;
